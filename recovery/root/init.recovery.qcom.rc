@@ -27,6 +27,15 @@
 
 import /init.recovery.qcom_decrypt.rc
 
+on early-init
+    # Start QSEECom daemon first (required for TrustZone communication)
+    start vendor.qseecomd
+
+on post-fs
+    # Start Keymaster and Gatekeeper after QSEECom is ready
+    start vendor.keymaster-4-1
+    start vendor.gatekeeper-1-0
+
 on boot
     # Enable ADB
     setprop sys.usb.config adb

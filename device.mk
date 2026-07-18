@@ -40,9 +40,23 @@ PRODUCT_PACKAGES += \
     qcom_decrypt \
     qcom_decrypt_fbe
 
+# Additional crypto libraries for Android 16 FBE
+PRODUCT_PACKAGES += \
+    keystore2 \
+    libkeymaster4support \
+    libkeymint \
+    libscrypt_static \
+    libfscrypt
+
 # Disable SPU usage
 PRODUCT_PROPERTY_OVERRIDES += \
     vendor.gatekeeper.disable_spu = true
+
+# Crypto properties for Android 16
+PRODUCT_PROPERTY_OVERRIDES += \
+    ro.crypto.dm_default_key.enabled=true \
+    ro.crypto.keyblob.control.enabled=true \
+    ro.crypto.metadata_inittest.mode=true
 
 # Dynamic partitions
 PRODUCT_USE_DYNAMIC_PARTITIONS := true

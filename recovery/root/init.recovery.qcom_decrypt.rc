@@ -1,0 +1,15 @@
+on post-fs
+    # Start QSEECom daemon first (required for TrustZone communication)
+    start vendor.qseecomd
+
+    # Wait for qseecomd to be ready
+    wait /dev/socket/qseecom
+
+    # Start Keymaster HAL (needed for key blob decryption)
+    start vendor.keymaster-4-1
+
+    # Start Gatekeeper HAL (needed for credential verification)
+    start vendor.gatekeeper-1-0
+
+on property:sys.boot_completed=1
+    start vendor.qseecomd
