@@ -96,7 +96,7 @@ jobs:
           export FOX_VANILLA_BUILD=1
           export LC_ALL=C
           cd "$GITHUB_WORKSPACE/fox_$FOX_BRANCH"
-          source build/envsetup.sh
+          source build/envsetup.sh || true
           lunch twrp_${DEVICE}-eng
           mka adbd bootimage
 
