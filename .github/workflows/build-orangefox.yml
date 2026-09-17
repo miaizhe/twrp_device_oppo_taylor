@@ -1,0 +1,118 @@
+name: Build OrangeFox Recovery
+
+on:
+  workflow_dispatch:
+    inputs:
+      fox_branch:
+        description: "OrangeFox sync branch"
+        required: true
+        default: "12.1"
+        type: choice
+        options:
+          - "12.1"
+          - "14.1"
+      build_type:
+        description: "OrangeFox build type"
+        required: true
+        default: "Unofficial"
+        type: choice
+        options:
+          - Unofficial
+          - Beta
+          - Stable
+  push:
+    branches:
+      - twrp-12.1
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: OrangeFox (${{ github.event.inputs.fox_branch || '12.1' }})
+    runs-on: ubuntu-22.04
+    timeout-minutes: 350
+    env:
+      FOX_BRANCH: ${{ github.event.inputs.fox_branch || '12.1' }}
+      FOX_BUILD_TYPE: ${{ github.event.inputs.build_type || 'Unofficial' }}
+      DEVICE: taylor
+    steps:
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            bc bison build-essential ccache curl flex g++-multilib gcc-multilib \
+            git gnupg gperf imagemagick lib32ncurses5-dev lib32readline-dev \
+            lib32z1-dev libelf-dev liblz4-tool libncurses5 libncurses5-dev \
+            libsdl1.2-dev libssl-dev libxml2 libxml2-utils lzop patch cpio \
+            pngcrush rsync schedtool squashfs-tools unzip xsltproc zip \
+            zlib1g-dev openjdk-11-jdk python3 python-is-python3
+
+      - name: Configure git and repo
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git config --global color.ui false
+          git config --global --add safe.directory '*'
+          mkdir -p "$HOME/.bin"
+          curl -s https://storage.googleapis.com/git-repo-downloads/repo > "$HOME/.bin/repo"
+          chmod a+rx "$HOME/.bin/repo"
+          echo "$HOME/.bin" >> "$GITHUB_PATH"
+
+      - name: Sync OrangeFox sources
+        run: |
+          set -e
+          git clone --depth=1 https://gitlab.com/OrangeFox/sync.git "$HOME/OrangeFox_sync/sync"
+          cd "$HOME/OrangeFox_sync/sync"
+          ./orangefox_sync.sh --branch "$FOX_BRANCH" --path "$GITHUB_WORKSPACE/fox_$FOX_BRANCH"
+
+      - name: Checkout device tree
+        uses: actions/checkout@v4
+        with:
+          path: fox_${{ env.FOX_BRANCH }}/device/oppo/taylor
+
+      - name: Build OrangeFox
+        run: |
+          set -e
+          export ALLOW_MISSING_DEPENDENCIES=true
+          export FOX_BUILD_DEVICE="$DEVICE"
+          export FOX_BUILD_TYPE="$FOX_BUILD_TYPE"
+          export OF_DEFAULT_KEYMASTER_VERSION=4.1
+          export FOX_AB_DEVICE=1
+          export FOX_VIRTUAL_AB_DEVICE=1
+          export OF_FORCE_PREBUILT_KERNEL=1
+          export FOX_VANILLA_BUILD=1
+          export LC_ALL=C
+          cd "$GITHUB_WORKSPACE/fox_$FOX_BRANCH"
+          source build/envsetup.sh
+          lunch twrp_${DEVICE}-eng
+          mka adbd bootimage
+
+      - name: Collect build output
+        if: always()
+        run: |
+          OUT="$GITHUB_WORKSPACE/fox_$FOX_BRANCH/out/target/product/$DEVICE"
+          mkdir -p "$GITHUB_WORKSPACE/artifacts"
+          find "$OUT" -maxdepth 1 -name 'OrangeFox-*.img' -exec cp -v {} "$GITHUB_WORKSPACE/artifacts/" \; || true
+          if [ -f "$OUT/boot.img" ]; then cp -v "$OUT/boot.img" "$GITHUB_WORKSPACE/artifacts/"; fi
+          ls -lh "$GITHUB_WORKSPACE/artifacts" || true
+
+      - name: Upload OrangeFox image
+        uses: actions/upload-artifact@v4
+        with:
+          name: OrangeFox-${{ env.DEVICE }}-${{ env.FOX_BRANCH }}
+          path: ${{ github.workspace }}/artifacts/*
+          if-no-files-found: warn
+          compression-level: 0
