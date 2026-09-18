@@ -104,7 +104,12 @@ jobs:
           export LC_ALL=C
           cd "$GITHUB_WORKSPACE/fox_$FOX_BRANCH"
           source build/envsetup.sh || true
-          lunch twrp_${DEVICE}-eng
+          # android-14.0.0_r67+ requires the 3-part form <product>-<release>-<variant>
+          RELEASE=$(ls build/release/build_config/ 2>/dev/null | head -n1 | sed 's/\.scl$//')
+          [ -n "$RELEASE" ] || RELEASE=ap2a
+          echo "Using TARGET_RELEASE=$RELEASE"
+          ls build/release/build_config/ 2>/dev/null || true
+          lunch twrp_${DEVICE}-${RELEASE}-eng
           mka adbd bootimage
 
       - name: Patch target boot with OrangeFox ramdisk
