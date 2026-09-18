@@ -96,6 +96,7 @@ jobs:
           export FOX_BUILD_DEVICE="$DEVICE"
           export FOX_BUILD_TYPE="$FOX_BUILD_TYPE"
           export OF_DEFAULT_KEYMASTER_VERSION=4.1
+          export OF_NO_KEYMASTER_VER_4X=1
           export FOX_AB_DEVICE=1
           export FOX_VIRTUAL_AB_DEVICE=1
           export OF_FORCE_PREBUILT_KERNEL=1
