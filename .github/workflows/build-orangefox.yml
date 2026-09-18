@@ -6,7 +6,7 @@ on:
       fox_branch:
         description: "OrangeFox sync branch"
         required: true
-        default: "12.1"
+        default: "14.1"
         type: choice
         options:
           - "12.1"
@@ -35,11 +35,11 @@ concurrency:
 
 jobs:
   build:
-    name: OrangeFox (${{ github.event.inputs.fox_branch || '12.1' }})
+    name: OrangeFox (${{ github.event.inputs.fox_branch || '14.1' }})
     runs-on: ubuntu-22.04
     timeout-minutes: 350
     env:
-      FOX_BRANCH: ${{ github.event.inputs.fox_branch || '12.1' }}
+      FOX_BRANCH: ${{ github.event.inputs.fox_branch || '14.1' }}
       FOX_BUILD_TYPE: ${{ github.event.inputs.build_type || 'Unofficial' }}
       DEVICE: taylor
       TARGET_BOOT_URL: ${{ github.event.inputs.target_boot || 'https://github.com/miaizhe/Kernel_oppo_sm7325_Reno10/releases/download/20260916/boot-ReSukiSU-Reno10-test-WithoutTWRP-Docker-20260916.img' }}
