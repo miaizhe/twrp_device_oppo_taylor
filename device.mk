@@ -9,6 +9,9 @@ DEVICE_PATH := device/oppo/taylor
 # SHIPPING API
 PRODUCT_SHIPPING_API_LEVEL := 30
 
+# UFFD GC - kernel 5.4 does not support MREMAP_DONTUNMAP
+PRODUCT_ENABLE_UFFD_GC := false
+
 # A/B
 TARGET_IS_VAB := true
 AB_OTA_POSTINSTALL_CONFIG += \
