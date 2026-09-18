@@ -20,6 +20,11 @@ on:
           - Unofficial
           - Beta
           - Stable
+      target_boot:
+        description: "Target boot image URL to inject the OrangeFox ramdisk into"
+        required: true
+        default: "https://github.com/miaizhe/Kernel_oppo_sm7325_Reno10/releases/download/20260916/boot-ReSukiSU-Reno10-test-WithoutTWRP-Docker-20260916.img"
+        type: string
   push:
     branches:
       - twrp-12.1
@@ -37,6 +42,7 @@ jobs:
       FOX_BRANCH: ${{ github.event.inputs.fox_branch || '12.1' }}
       FOX_BUILD_TYPE: ${{ github.event.inputs.build_type || 'Unofficial' }}
       DEVICE: taylor
+      TARGET_BOOT_URL: ${{ github.event.inputs.target_boot || 'https://github.com/miaizhe/Kernel_oppo_sm7325_Reno10/releases/download/20260916/boot-ReSukiSU-Reno10-test-WithoutTWRP-Docker-20260916.img' }}
     steps:
       - name: Free disk space
         uses: jlumbroso/free-disk-space@main
@@ -100,19 +106,44 @@ jobs:
           lunch twrp_${DEVICE}-eng
           mka adbd bootimage
 
-      - name: Collect build output
-        if: always()
+      - name: Patch target boot with OrangeFox ramdisk
         run: |
+          set -e
           OUT="$GITHUB_WORKSPACE/fox_$FOX_BRANCH/out/target/product/$DEVICE"
-          mkdir -p "$GITHUB_WORKSPACE/artifacts"
-          find "$OUT" -maxdepth 1 -name 'OrangeFox-*.img' -exec cp -v {} "$GITHUB_WORKSPACE/artifacts/" \; || true
-          if [ -f "$OUT/boot.img" ]; then cp -v "$OUT/boot.img" "$GITHUB_WORKSPACE/artifacts/"; fi
-          ls -lh "$GITHUB_WORKSPACE/artifacts" || true
+          FOX_BOOT=$(find "$OUT" -maxdepth 1 -name 'OrangeFox-*.img' | head -n1)
+          if [ -z "$FOX_BOOT" ]; then FOX_BOOT="$OUT/boot.img"; fi
+          if [ ! -f "$FOX_BOOT" ]; then
+            echo "OrangeFox boot image not found in $OUT"; exit 1
+          fi
+          echo "OrangeFox boot: $FOX_BOOT"
 
-      - name: Upload OrangeFox image
+          mkdir -p "$HOME/.bin" "$GITHUB_WORKSPACE/artifacts"
+          curl -sL "https://github.com/topjohnwu/Magisk/releases/download/v30.7/Magisk-v30.7.apk" -o /tmp/magisk.apk
+          unzip -o -q /tmp/magisk.apk 'lib/x86_64/libmagiskboot.so' -d /tmp/magisk_apk
+          MAGISKBOOT="$HOME/.bin/magiskboot"
+          cp /tmp/magisk_apk/lib/x86_64/libmagiskboot.so "$MAGISKBOOT"
+          chmod +x "$MAGISKBOOT"
+
+          curl -sL "$TARGET_BOOT_URL" -o /tmp/target-boot.img
+          echo "Target boot: $TARGET_BOOT_URL"
+
+          rm -rf /tmp/fox /tmp/target
+          mkdir -p /tmp/fox /tmp/target
+          cp "$FOX_BOOT" /tmp/fox/fox.img
+          ( cd /tmp/fox && "$MAGISKBOOT" unpack fox.img )
+
+          cp /tmp/target-boot.img /tmp/target/target.img
+          ( cd /tmp/target && "$MAGISKBOOT" unpack target.img )
+
+          cp /tmp/fox/ramdisk.cpio /tmp/target/ramdisk.cpio
+          ( cd /tmp/target && "$MAGISKBOOT" repack target.img "$GITHUB_WORKSPACE/artifacts/boot-orangefox-$DEVICE.img" )
+
+          ls -lh "$GITHUB_WORKSPACE/artifacts"
+
+      - name: Upload patched boot
         uses: actions/upload-artifact@v4
         with:
-          name: OrangeFox-${{ env.DEVICE }}-${{ env.FOX_BRANCH }}
-          path: ${{ github.workspace }}/artifacts/*
-          if-no-files-found: warn
+          name: boot-orangefox-${{ env.DEVICE }}
+          path: ${{ github.workspace }}/artifacts/boot-orangefox-${{ env.DEVICE }}.img
+          if-no-files-found: error
           compression-level: 0
