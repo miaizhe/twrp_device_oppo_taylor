@@ -112,6 +112,7 @@ jobs:
           export FOX_VIRTUAL_AB_DEVICE=1
           export OF_FORCE_PREBUILT_KERNEL=1
           export FOX_VANILLA_BUILD=1
+          export OVERRIDE_ENABLE_UFFD_GC=false
           export LC_ALL=C
           cd "$GITHUB_WORKSPACE/fox_$FOX_BRANCH"
           source build/envsetup.sh || true

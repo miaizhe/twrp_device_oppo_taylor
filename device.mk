@@ -10,6 +10,7 @@ DEVICE_PATH := device/oppo/taylor
 PRODUCT_SHIPPING_API_LEVEL := 30
 
 # UFFD GC - kernel 5.4 does not support MREMAP_DONTUNMAP
+OVERRIDE_ENABLE_UFFD_GC := false
 PRODUCT_ENABLE_UFFD_GC := false
 
 # A/B
